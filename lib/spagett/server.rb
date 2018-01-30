@@ -24,8 +24,9 @@ module Spagett
       super
     end
 
-    post '/thread' do # params: id, user
-      puts settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: "Thread reply/creation incoming from syosseths.com"
+    post '/threads' do # params: id, user_name
+      message = "*#{params[:user_name]}* has opened a support thread."
+      settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: message, as_user: true
     end
   end
 end
