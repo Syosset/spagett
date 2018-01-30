@@ -27,5 +27,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sinatra", "~> 2.0"
   spec.add_dependency "slack-ruby-client", "~> 0.11"
   spec.add_dependency "redis", "~> 4.0"
+  spec.add_dependency "faraday", "~> 0.12"
   spec.add_dependency "dotenv", "~> 2.2"
 end

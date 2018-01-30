@@ -1,23 +1,31 @@
 require 'sinatra/base'
 require 'slack-ruby-client'
-require 'redis'
 
 module Spagett
   class Server < Sinatra::Base
 
     def self.run!
-      set :redis, Redis.new
+      set :threads, ThreadStore.new
       set :client, Slack::RealTime::Client.new(token: ENV["SLACK_TOKEN"])
+      set :syosset, Faraday.new(:url => ENV['SYOSSET_HOST'] || 'https://syosseths.com', :params => {:token => ENV['SYOSSET_TOKEN']})
 
       settings.client.on :hello do
         puts "Successfully connected, welcome '#{client.self.name}' to the '#{client.team.name}' team at https://#{client.team.domain}.slack.com."
       end
 
       settings.client.on :message do |data|
-        next unless data.message.try(:thread_ts)
+        next unless data.respond_to?(:thread_ts)
         next unless data.channel == ENV["SUPPORT_CHANNEL"]
+        next if data.respond_to?(:bot_id) # ignore bot messages
 
-        puts "Updating syosseths.com with reply to thread #{data.message.thread_ts} with #{data.message.text}"
+        thread_id = settings.threads.get_thread(data.thread_ts)
+        if thread_id.nil?
+          puts "No support thread with timestamp #{data.thread_ts} is known, ignoring"
+          next
+        end
+
+        puts "Updating API with reply to thread #{thread_id} with #{data.text}"
+        settings.syosset.post "/threads/#{thread_id}/messages", {sender_name: "Syosset Bot", text: data.text}
       end
 
       settings.client.start_async
@@ -29,19 +37,17 @@ module Spagett
       message = "*#{params[:user_name]}* has opened a support thread."
       notification = settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: message, as_user: true
 
-      thread_id = params[:id]
-      settings.redis.set "spagett:thread:#{thread_id}", notification.ts
+      settings.threads.register_thread params[:id], notification.ts
 
       'ok!'
     end
 
     post '/threads/:thread/messages' do
-      thread_id = params[:thread]
-      thread_notification = settings.redis.get "spagett:thread:#{thread_id}"
-      return 'slack machine broke' if thread_notification.nil?
+      thread_ts = settings.threads.get_thread(params[:thread])
+      return 'slack machine broke' if thread_ts.nil?
 
       settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: params[:message],
-          thread_ts: thread_notification, username: params[:sender][:name], icon_url: params[:sender][:picture]
+          thread_ts: thread_ts, username: params[:sender][:name], icon_url: params[:sender][:picture]
 
       'ok!'
     end
