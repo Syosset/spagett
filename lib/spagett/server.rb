@@ -1,11 +1,12 @@
 require 'sinatra/base'
 require 'slack-ruby-client'
-require 'pry'
+require 'redis'
 
 module Spagett
   class Server < Sinatra::Base
 
     def self.run!
+      set :redis, Redis.new
       set :client, Slack::RealTime::Client.new(token: ENV["SLACK_TOKEN"])
 
       settings.client.on :hello do
@@ -26,7 +27,23 @@ module Spagett
 
     post '/threads' do # params: id, user_name
       message = "*#{params[:user_name]}* has opened a support thread."
-      settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: message, as_user: true
+      notification = settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: message, as_user: true
+
+      thread_id = params[:id]
+      settings.redis.set "spagett:thread:#{thread_id}", notification.ts
+
+      'ok!'
+    end
+
+    post '/threads/:thread/messages' do
+      thread_id = params[:thread]
+      thread_notification = settings.redis.get "spagett:thread:#{thread_id}"
+      return 'slack machine broke' if thread_notification.nil?
+
+      settings.client.web_client.chat_postMessage channel: ENV["SUPPORT_CHANNEL"], text: params[:message],
+          thread_ts: thread_notification, username: params[:sender][:name], icon_url: params[:sender][:picture]
+
+      'ok!'
     end
   end
 end
