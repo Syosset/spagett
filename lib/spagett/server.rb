@@ -6,6 +6,7 @@ module Spagett
 
     def self.run!
       set :threads, ThreadStore.new
+      set :users, UserStore.new
       set :client, Slack::RealTime::Client.new(token: ENV["SLACK_TOKEN"])
       set :syosset, Faraday.new(:url => ENV['SYOSSET_HOST'] || 'https://syosseths.com', :params => {:token => ENV['SYOSSET_TOKEN']})
 
@@ -31,6 +32,12 @@ module Spagett
       settings.client.start_async
 
       super
+    end
+
+    post '/users/sign_up' do
+      settings.users.register_user params[:user_id], params[:text]
+
+      "Your Syosset identity has been linked with Slack. Thanks!"
     end
 
     post '/threads' do # params: id, user_name
