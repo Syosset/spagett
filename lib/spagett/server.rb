@@ -26,7 +26,7 @@ module Spagett
         end
 
         puts "Updating API with reply to thread #{thread_id} with #{data.text}"
-        settings.syosset.post "/threads/#{thread_id}/messages", {sender_name: "Syosset Bot", text: data.text}
+        settings.syosset.post "/threads/#{thread_id}/messages", {user_id: settings.users.get_user(data.user), text: data.text}
       end
 
       settings.client.start_async
