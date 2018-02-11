@@ -34,6 +34,10 @@ module Spagett
       super
     end
 
+    get '/status' do
+      "#{Socket.gethostname} connected to #{settings.client.team.domain}.slack.com"
+    end
+
     post '/users/sign_up' do
       settings.users.register_user params[:user_id], params[:text]
 
