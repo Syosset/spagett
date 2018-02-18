@@ -6,6 +6,6 @@ require "spagett/server"
 require 'redis'
 
 module Spagett
-  $redis = Redis.new
+  $redis = Redis.new(url: ENV["REDIS_URL"])
   Server.run!
 end

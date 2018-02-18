@@ -5,6 +5,7 @@ module Spagett
   class Server < Sinatra::Base
 
     def self.run!
+      set :bind, '0.0.0.0'
       set :threads, ThreadStore.new
       set :users, UserStore.new
       set :client, Slack::RealTime::Client.new(token: ENV["SLACK_TOKEN"])
