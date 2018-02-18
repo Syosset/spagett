@@ -4,10 +4,10 @@ require 'slack-ruby-client'
 module Spagett
   class Server < Sinatra::Base
 
-    def self.run!
+    def self.run(threads, users)
       set :bind, '0.0.0.0'
-      set :threads, ThreadStore.new
-      set :users, UserStore.new
+      set :threads, threads
+      set :users, users
       set :client, Slack::RealTime::Client.new(token: ENV["SLACK_TOKEN"])
       set :syosset, Faraday.new(:url => ENV['SYOSSET_HOST'] || 'https://syosseths.com', :params => {:token => ENV['SYOSSET_TOKEN']})
 
@@ -31,8 +31,7 @@ module Spagett
       end
 
       settings.client.start_async
-
-      super
+      run!
     end
 
     get '/status' do
